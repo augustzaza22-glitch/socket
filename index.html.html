@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ตารางงาน 7 Socket</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--text:#1d2330;--muted:#6b7385;--line:#e2e5ec;--acc:#2f6fed;--ok:#1f9d55;--warn:#d98200;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12151c;--card:#1b202b;--text:#eef0f5;--muted:#9aa3b5;--line:#2c3342;--acc:#6b9cff;--ok:#3ecf80;--warn:#f0a030;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#12151c;--card:#1b202b;--text:#eef0f5;--muted:#9aa3b5;--line:#2c3342;--acc:#6b9cff;--ok:#3ecf80;--warn:#f0a030;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Noto Sans Thai",system-ui,-apple-system,"Segoe UI",sans-serif;padding:20px 16px 40px}
+.wrap{max-width:760px;margin:0 auto}
+h1{font-size:22px;margin:0 0 4px}
+.sub{color:var(--muted);font-size:14px;margin:0 0 18px}
+.total,.dash{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:18px}
+.nums{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.big{font-size:40px;font-weight:700;color:var(--acc)}
+.goal{color:var(--muted);font-size:16px}
+.bar{height:12px;background:var(--line);border-radius:99px;overflow:hidden;margin:12px 0 8px}
+.fill{height:100%;width:0;background:var(--acc);transition:width .25s}
+.done .fill{background:var(--ok)}
+.msg{font-size:14px;color:var(--muted)}
+.done .msg{color:var(--ok);font-weight:600}
+.plate{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.pl{font-size:13px;color:var(--muted)}
+.pn{font-size:18px;margin-top:2px}.pn b{font-size:30px;color:var(--ok)}
+.dash h2{font-size:17px;margin:0 0 12px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+.kpi{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.kl{font-size:12px;color:var(--muted)}.kv{font-size:26px;font-weight:700;margin:2px 0}.ks{font-size:12px;color:var(--muted)}
+.ct{font-size:14px;font-weight:600;margin-bottom:8px}
+.brow{display:flex;align-items:center;gap:8px;margin:6px 0}
+.bl{width:28px;font-size:13px;color:var(--muted)}
+.bt{position:relative;flex:1;height:18px;background:var(--line);border-radius:6px;overflow:hidden}
+.bf{height:100%;background:var(--acc);transition:width .25s}.bf.ok{background:var(--ok)}.bf.low{background:var(--warn)}
+.bm{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed var(--text);opacity:.55}
+.bv{width:34px;text-align:right;font-size:13px}
+.legend{font-size:12px;color:var(--muted);margin-top:8px}
+.ins{font-size:14px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-wrap:wrap;gap:6px}
+.card.full{border-color:var(--ok)}
+.card h2{font-size:16px;margin:0;width:100%}
+.cnt{font-size:13px;color:var(--muted);width:100%}
+.entry{display:flex;align-items:center;gap:8px;width:100%;margin:4px 0 6px}
+.entry span{font-size:13px;color:var(--muted)}
+.entry input{width:84px;font:inherit;font-size:20px;font-weight:600;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);text-align:right}
+.entry input:focus{outline:2px solid var(--acc);border-color:var(--acc)}
+label{display:flex;align-items:center;gap:6px;padding:8px;border:1px solid var(--line);border-radius:10px;cursor:pointer;font-size:14px;width:calc(33.33% - 4px)}
+label:has(input:checked){background:color-mix(in srgb,var(--ok) 14%,transparent);border-color:var(--ok)}
+label input{width:22px;height:22px;accent-color:var(--ok);margin:0}
+button{margin-top:18px;background:none;border:1px solid var(--line);color:var(--muted);padding:8px 14px;border-radius:10px;font:inherit;font-size:14px;cursor:pointer}
+#copybox{display:none;margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+#copybox textarea{width:100%;font-family:monospace;font-size:12px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>ตารางงาน 7 Socket</h1>
+  <p class="sub">พิมพ์จำนวนชิ้นที่ทำเสร็จในช่อง หรือติ๊กทีละ 10 ชิ้นก็ได้ · เป้าหมาย Socket ละ 110 ชิ้น (รวม 770 ชิ้น)</p>
+  <div class="pl" id="status" style="margin:-8px 0 14px"></div>
+  <div class="total" id="total">
+    <div class="nums"><span class="big" id="sum">0</span><span class="goal">/ 770 ชิ้น</span></div>
+    <div class="bar"><div class="fill" id="fill"></div></div>
+    <div class="msg" id="msg"></div>
+    <div class="plate"><div><div class="pl">รวมครบชุด (ทุก Socket อย่างละ 1 = 1 เพลท)</div><div class="pn"><b id="plates">0</b> / 110 เพลท</div></div><div class="pl" id="platenote"></div></div>
+  </div>
+  <div class="dash"><h2>📊 Dashboard สรุปผล</h2><div id="dash"></div></div>
+  <div class="grid" id="grid"></div>
+  <button id="export">⬇ ส่งออก Excel</button> <button id="reset">ล้างทั้งหมด</button>
+  <div id="copybox">
+    <div id="copynote" style="font-size:14px;margin-bottom:8px"></div>
+    <textarea id="copytxt" readonly rows="12"></textarea>
+    <button id="copybtn" style="margin-top:8px">คัดลอก</button>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const SOCKETS=7, PER=10, SG=110, BOXES=SG/PER, GOAL=SOCKETS*SG, KEY="socket-tracker-v3";
+let state=Array(SOCKETS).fill(0);
+try{const s=JSON.parse(localStorage.getItem(KEY)||"null");
+  if(Array.isArray(s)&&s.length===SOCKETS&&s.every(Number.isFinite))state=s.map(x=>Math.max(0,Math.min(SG,Math.round(x))));}catch(e){}
+const clamp=n=>Math.max(0,Math.min(SG,Math.round(n)));
+let db=null;const pending={},ver={},timers={};
+function setStatus(t){$("status").textContent=t;}
+function save(i){
+  try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}
+  if(!db)return;
+  (i===undefined?state.map((_,k)=>k):[i]).forEach(k=>{
+    pending[k]=true;const v=(ver[k]=(ver[k]||0)+1);
+    clearTimeout(timers[k]);
+    timers[k]=setTimeout(async()=>{
+      try{await db.doc("tracker/s"+(k+1)).set({n:state[k],t:Date.now()});
+        setStatus("☁️ บันทึกแล้ว · ข้อมูลตรงกันทุกเครื่อง (มือถือ/คอมพิวเตอร์)");}
+      catch(e){setStatus("⚠️ บันทึกขึ้นระบบไม่ได้ (อาจไม่มีสิทธิ์แก้ไข) — เก็บไว้ในเครื่องนี้");}
+      if(ver[k]===v)pending[k]=false;
+    },500);
+  });
+}
+async function initDb(){
+  try{if(window.claude)db=await window.claude.use("db");}catch(e){db=null;}
+  if(!db){setStatus("💾 บันทึกในเครื่องนี้เท่านั้น (เปิดผ่านลิงก์ claude.ai เพื่อซิงค์ข้อมูลทุกเครื่อง)");return;}
+  setStatus("☁️ กำลังเชื่อมต่อ...");
+  let first=true;
+  try{
+    db.collection("tracker").onSnapshot(snap=>{
+      if(first&&snap.empty&&state.some(x=>x>0)){first=false;save();setStatus("☁️ กำลังอัปโหลดข้อมูลในเครื่องนี้...");return;}
+      first=false;
+      snap.docs.forEach(d=>{
+        const m=/^s(\d+)$/.exec(d.id);if(!m)return;
+        const i=+m[1]-1,dat=d.data(),n=dat&&dat.n;
+        if(i>=0&&i<SOCKETS&&Number.isFinite(n)&&!pending[i])state[i]=clamp(n);
+      });
+      try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}
+      update();
+      setStatus("☁️ บันทึกอัตโนมัติ · ข้อมูลตรงกันทุกเครื่อง (มือถือ/คอมพิวเตอร์)");
+    },err=>{db=null;setStatus("💾 เชื่อมต่อระบบบันทึกไม่ได้ — เก็บไว้ในเครื่องนี้");});
+  }catch(e){db=null;setStatus("💾 บันทึกในเครื่องนี้เท่านั้น");}
+}
+const $=id=>document.getElementById(id);
+const cards=[];
+function build(){
+  const grid=$("grid");grid.innerHTML="";
+  state.forEach((_,i)=>{
+    const c=document.createElement("div");c.className="card";
+    const h=document.createElement("h2");h.textContent="Socket "+(i+1);
+    const cnt=document.createElement("div");cnt.className="cnt";
+    const en=document.createElement("div");en.className="entry";
+    en.innerHTML='<span>ทำเสร็จ</span><input type="text" inputmode="numeric" autocomplete="off"><span>/ '+SG+' ชิ้น</span>';
+    const inp=en.querySelector("input");inp.setAttribute("aria-label","จำนวนชิ้นที่ทำเสร็จ Socket "+(i+1));
+    inp.onfocus=()=>inp.select();
+    inp.oninput=()=>{let raw=inp.value.replace(/\D/g,"").slice(0,3);let n=Math.min(SG,+raw||0);
+      inp.value=raw===""?"":String(n);state[i]=n;save(i);update();};
+    inp.onblur=()=>{inp.value=state[i];};
+    c.append(h,cnt,en);
+    const boxes=[];
+    for(let j=0;j<BOXES;j++){
+      const l=document.createElement("label");
+      l.innerHTML='<input type="checkbox"><span>'+(j+1)*PER+'</span>';
+      const cb=l.querySelector("input");
+      cb.onchange=()=>{state[i]=cb.checked?(j+1)*PER:j*PER;save(i);update();};
+      boxes.push(cb);c.appendChild(l);
+    }
+    cards.push({c,cnt,inp,boxes});grid.appendChild(c);
+  });
+}
+function update(){
+  cards.forEach((k,i)=>{const n=state[i];
+    k.c.classList.toggle("full",n>=SG);
+    k.cnt.textContent=n>=SG?"ครบแล้ว ✓":"ต้องทำเพิ่มอีก "+(SG-n)+" ชิ้น";
+    if(document.activeElement!==k.inp)k.inp.value=n;
+    k.boxes.forEach((b,j)=>{b.checked=n>=(j+1)*PER;});});
+  const sum=state.reduce((a,b)=>a+b,0),plates=Math.min(...state);
+  renderDash(state,sum,plates);
+  $("plates").textContent=plates;
+  const low=state.map((c,i)=>c===plates?i+1:null).filter(Boolean);
+  $("platenote").textContent=plates>=SG?"ครบเป้าหมาย "+SG+" เพลทแล้ว 🎉":"ต้องทำเพิ่มอีก "+(SG-plates)+" เพลท · ตัวที่น้อยสุด: Socket "+low.join(", ");
+  $("sum").textContent=sum;
+  $("fill").style.width=Math.min(100,sum/GOAL*100)+"%";
+  $("total").classList.toggle("done",sum>=GOAL);
+  $("msg").textContent=sum>=GOAL?"ครบเป้าหมายทุก Socket แล้ว 🎉":"ต้องทำเพิ่มอีก "+(GOAL-sum)+" ชิ้น (รวมทุก Socket) จึงครบเป้าหมาย";
+}
+function renderDash(counts,sum,plates){
+  const max=Math.max(...counts),min=Math.min(...counts);
+  const full=counts.filter(c=>c>=SG).length,pct=Math.round(sum/GOAL*100);
+  const k=(l,v,t)=>`<div class="kpi"><div class="kl">${l}</div><div class="kv">${v}</div><div class="ks">${t}</div></div>`;
+  let h='<div class="kpis">'+k("ทำเสร็จรวม",sum,"จาก "+GOAL+" ชิ้น")+k("ต้องทำเพิ่ม",GOAL-sum,"ชิ้น")+k("เพลทครบชุด",plates,"จาก "+SG+" เพลท")+k("ความคืบหน้า",pct+"%","Socket ครบแล้ว "+full+"/"+SOCKETS)+'</div>';
+  h+='<div class="ct">ความคืบหน้าแต่ละ Socket (ชิ้น)</div>';
+  counts.forEach((c,i)=>{const cls=c>=SG?"ok":(c===min&&min<max?"low":"");
+    h+=`<div class="brow"><span class="bl">S${i+1}</span><div class="bt"><div class="bf ${cls}" style="width:${c/SG*100}%"></div><div class="bm" style="left:${plates/SG*100}%"></div></div><span class="bv">${c}</span></div>`;});
+  h+='<div class="legend">เส้นประ = ระดับเพลทครบชุด · สีส้ม = Socket ที่ช้าสุด · สีเขียว = ครบเป้า '+SG+'</div>';
+  const hi=counts.map((c,i)=>c===max?i+1:null).filter(Boolean),lo=counts.map((c,i)=>c===min?i+1:null).filter(Boolean);
+  h+=max===min?`<div class="ins">ทุก Socket ทำได้เท่ากัน ${max} ชิ้น</div>`:`<div class="ins">เร็วสุด: Socket ${hi.join(", ")} (${max} ชิ้น) · ช้าสุด: Socket ${lo.join(", ")} (${min} ชิ้น) · ห่างกัน ${max-min} ชิ้น</div>`;
+  $("dash").innerHTML=h;
+}
+function buildRows(){
+  const tot=state.reduce((a,b)=>a+b,0),plates=Math.min(...state);
+  const sum=[["Socket","ทำเสร็จ (ชิ้น)","เป้าหมาย (ชิ้น)","คงเหลือ (ชิ้น)","ความคืบหน้า (%)"]];
+  state.forEach((c,i)=>sum.push(["Socket "+(i+1),c,SG,SG-c,Math.round(c/SG*100)]));
+  sum.push(["รวม",tot,GOAL,GOAL-tot,Math.round(tot/GOAL*100)]);
+  sum.push([]);
+  sum.push(["เพลทที่ครบชุด (ทุก Socket อย่างละ 1 = 1 เพลท)",plates,SG,SG-plates,Math.round(plates/SG*100)]);
+  const det=[["Socket","ทำเสร็จ (ชิ้น)",...Array.from({length:BOXES},(_,j)=>String((j+1)*PER))]];
+  state.forEach((c,i)=>det.push(["Socket "+(i+1),c,...Array.from({length:BOXES},(_,j)=>c>=(j+1)*PER?"✓":"")]));
+  return {sum,det};
+}
+function showCopy(note){
+  const {sum,det}=buildRows();
+  $("copynote").textContent=note;
+  const t=$("copytxt");
+  t.value=sum.concat([[]],det).map(r=>r.join("\t")).join("\n");
+  $("copybox").style.display="block";
+  $("copybtn").textContent="คัดลอก";
+  t.focus();t.select();
+}
+$("copybtn").onclick=async()=>{
+  const t=$("copytxt");t.focus();t.select();let ok=false;
+  try{await navigator.clipboard.writeText(t.value);ok=true;}catch(e){}
+  if(!ok){try{ok=document.execCommand("copy");}catch(e){}}
+  $("copybtn").textContent=ok?"คัดลอกแล้ว ✓":"กด Ctrl+C เพื่อคัดลอก";
+};
+$("export").onclick=async()=>{
+  if(typeof XLSX==="undefined"){showCopy("สร้างไฟล์ Excel ไม่ได้ — กด \"คัดลอก\" แล้วไปวางใน Excel ช่อง A1");return;}
+  const {sum,det}=buildRows();
+  const wb=XLSX.utils.book_new();
+  const w1=XLSX.utils.aoa_to_sheet(sum);w1["!cols"]=[{wch:44},{wch:16},{wch:16},{wch:16},{wch:18}];
+  XLSX.utils.book_append_sheet(wb,w1,"สรุป");
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(det),"รายละเอียด");
+  const buf=XLSX.write(wb,{type:"array",bookType:"xlsx"});
+  const d=new Date(),pad=n=>String(n).padStart(2,"0");
+  const name="socket-"+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+".xlsx";
+  let dl=null;
+  try{if(window.claude)dl=await window.claude.use("downloads");}catch(e){}
+  if(dl){
+    try{await dl.save({filename:name,data:new Blob([buf])});return;}
+    catch(e){if(e&&e.code==="declined")return;}
+  }
+  try{const a=document.createElement("a");
+    a.href=URL.createObjectURL(new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));
+    a.download=name;document.body.appendChild(a);a.click();a.remove();}catch(e){}
+  showCopy("ถ้าไฟล์ .xlsx ไม่ถูกดาวน์โหลด ให้กด \"คัดลอก\" แล้วไปวางใน Excel ช่อง A1");
+};
+$("reset").onclick=()=>{if(confirm("ล้างข้อมูลทั้งหมด?")){state=Array(SOCKETS).fill(0);save();update();}};
+build();update();initDb();
+</script>
+</body>
+</html>
