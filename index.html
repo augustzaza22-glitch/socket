@@ -51,6 +51,26 @@ label{display:flex;align-items:center;gap:6px;padding:8px;border:1px solid var(-
 label:has(input:checked){background:color-mix(in srgb,var(--ok) 14%,transparent);border-color:var(--ok)}
 label input{width:22px;height:22px;accent-color:var(--ok);margin:0}
 button{margin-top:18px;background:none;border:1px solid var(--line);color:var(--muted);padding:8px 14px;border-radius:10px;font:inherit;font-size:14px;cursor:pointer}
+.stock{width:100%;margin-top:6px;padding-top:10px;border-top:1px dashed var(--line);display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.stock .sl{font-size:13px;color:var(--muted)}
+.stock input{font:inherit;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text)}
+.stock input.sn{width:84px;font-size:18px;font-weight:600;padding:5px 10px;text-align:right}
+.stock input.nt{width:100%;font-size:14px;padding:6px 10px}
+.stock input:focus{outline:2px solid var(--acc);border-color:var(--acc)}
+.srow{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:6px 0;border-top:1px solid var(--line)}
+.srow .sv{font-weight:600;white-space:nowrap}.srow .snt{color:var(--muted)}
+.btn2{margin-left:6px}
+.planin{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px;margin-bottom:12px}
+.planin input.pn2{width:100px;font:inherit;font-size:20px;font-weight:600;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);text-align:right}
+.planin input:focus,.prow input:focus{outline:2px solid var(--acc);border-color:var(--acc)}
+label.pchk{width:auto;border:0;padding:0;margin-left:auto;font-size:13px;color:var(--muted)}
+label.pchk:has(input:checked){background:none;border:0}
+label.pchk input{width:18px;height:18px}
+.prow{display:grid;grid-template-columns:42px 1fr 1fr 1fr 1.2fr;gap:6px;align-items:center;padding:6px 0;border-top:1px solid var(--line);font-size:14px}
+.prow.ph{border-top:0;font-size:12px;color:var(--muted);padding-top:0}
+.prow input{width:100%;max-width:70px;font:inherit;font-size:15px;font-weight:600;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);text-align:right}
+.prow .okc{color:var(--ok);font-weight:600}.prow .shc{color:var(--warn);font-weight:600}
+.psum{font-size:14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
 #copybox{display:none;margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
 #copybox textarea{width:100%;font-family:monospace;font-size:12px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px}
 </style>
@@ -67,8 +87,13 @@ button{margin-top:18px;background:none;border:1px solid var(--line);color:var(--
     <div class="plate"><div><div class="pl">รวมครบชุด (ทุก Socket อย่างละ 1 = 1 เพลท)</div><div class="pn"><b id="plates">0</b> / 110 เพลท</div></div><div class="pl" id="platenote"></div></div>
   </div>
   <div class="dash"><h2>📊 Dashboard สรุปผล</h2><div id="dash"></div></div>
+  <div class="dash" id="stockpanel"><h2>📦 สต๊อกแยก (เก็บไว้ใช้อย่างอื่น)</h2><div id="stocksum"></div></div>
+  <div class="dash" id="planpanel"><h2>🧮 คำนวณจำนวนที่ต้องใช้ตามเพลท</h2>
+    <div class="planin"><span>ต้องการ</span><input class="pn2" id="planN" type="text" inputmode="numeric" autocomplete="off" aria-label="จำนวนเพลทที่ต้องการ"><span>เพลท</span>
+      <label class="pchk"><input type="checkbox" id="planStock">นับสต๊อกแยกเป็นของที่มีด้วย</label></div>
+    <div id="plantbl"></div><div class="psum" id="plansum"></div></div>
   <div class="grid" id="grid"></div>
-  <button id="export">⬇ ส่งออก Excel</button> <button id="reset">ล้างทั้งหมด</button>
+  <button id="export">⬇ ส่งออก Excel</button> <button id="reset">ล้างจำนวนที่ทำ</button><button id="resetstock" class="btn2">ล้างสต๊อกแยก</button>
   <div id="copybox">
     <div id="copynote" style="font-size:14px;margin-bottom:8px"></div>
     <textarea id="copytxt" readonly rows="12"></textarea>
@@ -83,6 +108,49 @@ try{const s=JSON.parse(localStorage.getItem(KEY)||"null");
   if(Array.isArray(s)&&s.length===SOCKETS&&s.every(Number.isFinite))state=s.map(x=>Math.max(0,Math.min(SG,Math.round(x))));}catch(e){}
 const clamp=n=>Math.max(0,Math.min(SG,Math.round(n)));
 let db=null;const pending={},ver={},timers={};
+const SKEY="socket-stock-v1",MAXS=99999;
+let stock=Array(SOCKETS).fill(0),snote=Array(SOCKETS).fill("");
+const clampS=n=>Math.max(0,Math.min(MAXS,Math.round(n)));
+try{const t=JSON.parse(localStorage.getItem(SKEY)||"null");
+  if(t&&Array.isArray(t.n)&&t.n.length===SOCKETS){stock=t.n.map(x=>Number.isFinite(x)?clampS(x):0);
+    if(Array.isArray(t.note))snote=t.note.map(x=>typeof x==="string"?x.slice(0,60):"").slice(0,SOCKETS);}}catch(e){}
+while(snote.length<SOCKETS)snote.push("");
+const pendingK={},verK={},timersK={};
+function saveLocalStock(){try{localStorage.setItem(SKEY,JSON.stringify({n:stock,note:snote}));}catch(e){}}
+function saveStock(i){
+  saveLocalStock();
+  if(!db)return;
+  (i===undefined?stock.map((_,k)=>k):[i]).forEach(k=>{
+    pendingK[k]=true;const v=(verK[k]=(verK[k]||0)+1);
+    clearTimeout(timersK[k]);
+    timersK[k]=setTimeout(async()=>{
+      try{await db.doc("tracker/k"+(k+1)).set({n:stock[k],note:snote[k],t:Date.now()});
+        setStatus("☁️ บันทึกแล้ว · ข้อมูลตรงกันทุกเครื่อง (มือถือ/คอมพิวเตอร์)");}
+      catch(e){setStatus("⚠️ บันทึกขึ้นระบบไม่ได้ (อาจไม่มีสิทธิ์แก้ไข) — เก็บไว้ในเครื่องนี้");}
+      if(verK[k]===v)pendingK[k]=false;
+    },500);
+  });
+}
+const PKEY="socket-plan-v1";
+function normPlan(t){const o={n:0,per:Array(SOCKETS).fill(1),stock:false};
+  if(t&&typeof t==="object"){if(Number.isFinite(t.n))o.n=Math.max(0,Math.min(99999,Math.round(t.n)));
+    if(Array.isArray(t.per))for(let i=0;i<SOCKETS;i++)if(Number.isFinite(t.per[i]))o.per[i]=Math.max(0,Math.min(999,Math.round(t.per[i])));
+    o.stock=!!t.stock;}
+  return o;}
+let plan=normPlan(null);
+try{plan=normPlan(JSON.parse(localStorage.getItem(PKEY)||"null"));}catch(e){}
+let pendingP=false,verP=0,timerP;
+function savePlan(){
+  try{localStorage.setItem(PKEY,JSON.stringify(plan));}catch(e){}
+  if(!db)return;
+  pendingP=true;const v=++verP;clearTimeout(timerP);
+  timerP=setTimeout(async()=>{
+    try{await db.doc("tracker/plan").set({n:plan.n,per:plan.per,stock:plan.stock,t:Date.now()});
+      setStatus("☁️ บันทึกแล้ว · ข้อมูลตรงกันทุกเครื่อง (มือถือ/คอมพิวเตอร์)");}
+    catch(e){setStatus("⚠️ บันทึกขึ้นระบบไม่ได้ (อาจไม่มีสิทธิ์แก้ไข) — เก็บไว้ในเครื่องนี้");}
+    if(verP===v)pendingP=false;
+  },500);
+}
 function setStatus(t){$("status").textContent=t;}
 function save(i){
   try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}
@@ -105,14 +173,21 @@ async function initDb(){
   let first=true;
   try{
     db.collection("tracker").onSnapshot(snap=>{
-      if(first&&snap.empty&&state.some(x=>x>0)){first=false;save();setStatus("☁️ กำลังอัปโหลดข้อมูลในเครื่องนี้...");return;}
+      if(first&&snap.empty&&(state.some(x=>x>0)||stock.some(x=>x>0)||snote.some(Boolean)||plan.n>0)){first=false;save();saveStock();savePlan();setStatus("☁️ กำลังอัปโหลดข้อมูลในเครื่องนี้...");return;}
       first=false;
       snap.docs.forEach(d=>{
+        if(d.id==="plan"){if(!pendingP)plan=normPlan(d.data());try{localStorage.setItem(PKEY,JSON.stringify(plan));}catch(e){}return;}
+        const mk=/^k(\d+)$/.exec(d.id);
+        if(mk){const i=+mk[1]-1,dat=d.data()||{};
+          if(i>=0&&i<SOCKETS&&!pendingK[i]){if(Number.isFinite(dat.n))stock[i]=clampS(dat.n);
+            if(typeof dat.note==="string")snote[i]=dat.note.slice(0,60);}
+          return;}
         const m=/^s(\d+)$/.exec(d.id);if(!m)return;
         const i=+m[1]-1,dat=d.data(),n=dat&&dat.n;
         if(i>=0&&i<SOCKETS&&Number.isFinite(n)&&!pending[i])state[i]=clamp(n);
       });
       try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}
+      saveLocalStock();
       update();
       setStatus("☁️ บันทึกอัตโนมัติ · ข้อมูลตรงกันทุกเครื่อง (มือถือ/คอมพิวเตอร์)");
     },err=>{db=null;setStatus("💾 เชื่อมต่อระบบบันทึกไม่ได้ — เก็บไว้ในเครื่องนี้");});
@@ -142,15 +217,69 @@ function build(){
       cb.onchange=()=>{state[i]=cb.checked?(j+1)*PER:j*PER;save(i);update();};
       boxes.push(cb);c.appendChild(l);
     }
-    cards.push({c,cnt,inp,boxes});grid.appendChild(c);
+    const st=document.createElement("div");st.className="stock";
+    st.innerHTML='<span class="sl">📦 แยกสต๊อก</span><input class="sn" type="text" inputmode="numeric" autocomplete="off"><span class="sl">ชิ้น</span><input class="nt" type="text" maxlength="60" autocomplete="off" placeholder="หมายเหตุ เช่น ใช้ทำอะไร (พิมพ์เอง)">';
+    const sn=st.querySelector(".sn"),nt=st.querySelector(".nt");
+    sn.setAttribute("aria-label","สต๊อกแยก Socket "+(i+1));nt.setAttribute("aria-label","หมายเหตุสต๊อกแยก Socket "+(i+1));
+    sn.onfocus=()=>sn.select();
+    sn.oninput=()=>{const raw=sn.value.replace(/\D/g,"").slice(0,5);stock[i]=clampS(+raw||0);
+      sn.value=raw===""?"":String(stock[i]);saveStock(i);update();};
+    sn.onblur=()=>{sn.value=stock[i];};
+    nt.oninput=()=>{snote[i]=nt.value.slice(0,60);saveStock(i);update();};
+    c.appendChild(st);
+    cards.push({c,cnt,inp,boxes,sn,nt});grid.appendChild(c);
   });
+}
+const prefs=[];
+function buildPlan(){
+  const t=$("plantbl");t.innerHTML='<div class="prow ph"><span>Socket</span><span>ต่อ 1 เพลท</span><span>ต้องใช้</span><span>มีอยู่</span><span>ขาด / เกิน</span></div>';
+  for(let i=0;i<SOCKETS;i++){
+    const r=document.createElement("div");r.className="prow";
+    r.innerHTML='<span>S'+(i+1)+'</span><span><input type="text" inputmode="numeric" autocomplete="off"></span><span class="pneed"></span><span class="phave"></span><span class="pdiff"></span>';
+    const inp=r.querySelector("input");inp.setAttribute("aria-label","จำนวนชิ้นต่อ 1 เพลท Socket "+(i+1));
+    inp.onfocus=()=>inp.select();
+    inp.oninput=()=>{const raw=inp.value.replace(/\D/g,"").slice(0,3);plan.per[i]=Math.min(999,+raw||0);inp.value=raw===""?"":String(plan.per[i]);savePlan();update();};
+    inp.onblur=()=>{inp.value=plan.per[i];};
+    prefs.push({inp,need:r.querySelector(".pneed"),have:r.querySelector(".phave"),diff:r.querySelector(".pdiff")});
+    t.appendChild(r);
+  }
+  const pn=$("planN");
+  pn.onfocus=()=>pn.select();
+  pn.oninput=()=>{const raw=pn.value.replace(/\D/g,"").slice(0,5);plan.n=+raw||0;pn.value=raw===""?"":String(plan.n);savePlan();update();};
+  pn.onblur=()=>{pn.value=plan.n;};
+  $("planStock").onchange=e=>{plan.stock=e.target.checked;savePlan();update();};
+}
+function planCalc(){
+  const N=plan.n;
+  return state.map((c,i)=>{const per=plan.per[i],need=N*per,have=c+(plan.stock?stock[i]:0);return {per,need,have,diff:have-need};});
+}
+function renderPlan(){
+  const rows=planCalc(),N=plan.n;
+  if(document.activeElement!==$("planN"))$("planN").value=N;
+  $("planStock").checked=plan.stock;
+  rows.forEach((r,i)=>{const k=prefs[i];
+    if(document.activeElement!==k.inp)k.inp.value=r.per;
+    k.need.textContent=r.need;k.have.textContent=r.have;
+    k.diff.className="pdiff "+(N===0?"":(r.diff>=0?"okc":"shc"));
+    k.diff.textContent=N===0?"–":(r.diff>=0?"พอ (+"+r.diff+")":"ขาด "+(-r.diff));});
+  const totNeed=rows.reduce((a,r)=>a+r.need,0),short=rows.reduce((a,r)=>a+Math.max(0,r.need-r.have),0);
+  const poss=rows.filter(r=>r.per>0).map(r=>Math.floor(r.have/r.per));
+  let h;
+  if(N===0)h="พิมพ์จำนวนเพลทที่ต้องการ แล้วระบบจะคำนวณว่าต้องใช้ Socket แต่ละตัวกี่ชิ้น (แก้ค่า \"ต่อ 1 เพลท\" ได้เอง)";
+  else h="ใช้รวม <b>"+totNeed+"</b> ชิ้น · "+(short===0?'<span class="okc">ของที่มีพอทุก Socket ✓</span>':'<span class="shc">ขาดรวม '+short+' ชิ้น</span>')
+    +(poss.length?" · ตอนนี้ทำครบได้ <b>"+Math.min(...poss)+"</b> เพลท":"");
+  $("plansum").innerHTML=h;
 }
 function update(){
   cards.forEach((k,i)=>{const n=state[i];
     k.c.classList.toggle("full",n>=SG);
     k.cnt.textContent=n>=SG?"ครบแล้ว ✓":"ต้องทำเพิ่มอีก "+(SG-n)+" ชิ้น";
     if(document.activeElement!==k.inp)k.inp.value=n;
-    k.boxes.forEach((b,j)=>{b.checked=n>=(j+1)*PER;});});
+    k.boxes.forEach((b,j)=>{b.checked=n>=(j+1)*PER;});
+    if(document.activeElement!==k.sn)k.sn.value=stock[i];
+    if(document.activeElement!==k.nt)k.nt.value=snote[i];});
+  renderStock();
+  renderPlan();
   const sum=state.reduce((a,b)=>a+b,0),plates=Math.min(...state);
   renderDash(state,sum,plates);
   $("plates").textContent=plates;
@@ -160,6 +289,19 @@ function update(){
   $("fill").style.width=Math.min(100,sum/GOAL*100)+"%";
   $("total").classList.toggle("done",sum>=GOAL);
   $("msg").textContent=sum>=GOAL?"ครบเป้าหมายทุก Socket แล้ว 🎉":"ต้องทำเพิ่มอีก "+(GOAL-sum)+" ชิ้น (รวมทุก Socket) จึงครบเป้าหมาย";
+}
+function renderStock(){
+  const tot=stock.reduce((a,b)=>a+b,0),made=state.reduce((a,b)=>a+b,0);
+  let h='<div class="kpis"><div class="kpi"><div class="kl">สต๊อกแยกรวม</div><div class="kv">'+tot+'</div><div class="ks">ชิ้น (ไม่นับในเป้า '+GOAL+')</div></div>'
+    +'<div class="kpi"><div class="kl">ทำเสร็จ + สต๊อกแยก</div><div class="kv">'+(made+tot)+'</div><div class="ks">ชิ้น รวมทั้งหมด</div></div></div>';
+  const rows=stock.map((n,i)=>({n,i,t:snote[i]})).filter(r=>r.n>0||r.t);
+  if(!rows.length)h+='<div class="msg">ยังไม่มีสต๊อกแยก — พิมพ์จำนวนในช่อง "แยกสต๊อก" ของแต่ละ Socket ด้านล่าง</div>';
+  else rows.forEach(r=>{const row=document.createElement("div");row.className="srow";
+    const a=document.createElement("span"),b=document.createElement("span");
+    a.innerHTML='Socket '+(r.i+1)+(r.t?' · <span class="snt"></span>':'');
+    if(r.t)a.querySelector(".snt").textContent=r.t;
+    b.className="sv";b.textContent=r.n+" ชิ้น";row.append(a,b);h+=row.outerHTML;});
+  $("stocksum").innerHTML=h;
 }
 function renderDash(counts,sum,plates){
   const max=Math.max(...counts),min=Math.min(...counts);
@@ -183,13 +325,18 @@ function buildRows(){
   sum.push(["เพลทที่ครบชุด (ทุก Socket อย่างละ 1 = 1 เพลท)",plates,SG,SG-plates,Math.round(plates/SG*100)]);
   const det=[["Socket","ทำเสร็จ (ชิ้น)",...Array.from({length:BOXES},(_,j)=>String((j+1)*PER))]];
   state.forEach((c,i)=>det.push(["Socket "+(i+1),c,...Array.from({length:BOXES},(_,j)=>c>=(j+1)*PER?"✓":"")]));
-  return {sum,det};
+  const stk=[["Socket","สต๊อกแยก (ชิ้น)","หมายเหตุ","ทำเสร็จ (ชิ้น)","ทำเสร็จ + สต๊อก (ชิ้น)"]];
+  state.forEach((c,i)=>stk.push(["Socket "+(i+1),stock[i],snote[i],c,c+stock[i]]));
+  stk.push(["รวม",stock.reduce((a,b)=>a+b,0),"",tot,tot+stock.reduce((a,b)=>a+b,0)]);
+  const pl=[["จำนวนเพลทที่ต้องการ",plan.n,plan.stock?"(นับสต๊อกแยกเป็นของที่มี)":"(ไม่นับสต๊อกแยก)"],[],["Socket","ต่อ 1 เพลท (ชิ้น)","ต้องใช้ (ชิ้น)","มีอยู่ (ชิ้น)","คงเหลือ(+) / ขาด(−)"]];
+  planCalc().forEach((r,i)=>pl.push(["Socket "+(i+1),r.per,r.need,r.have,r.diff]));
+  return {sum,det,stk,pl};
 }
 function showCopy(note){
-  const {sum,det}=buildRows();
+  const {sum,det,stk,pl}=buildRows();
   $("copynote").textContent=note;
   const t=$("copytxt");
-  t.value=sum.concat([[]],det).map(r=>r.join("\t")).join("\n");
+  t.value=sum.concat([[]],det,[[]],stk,[[]],pl).map(r=>r.join("\t")).join("\n");
   $("copybox").style.display="block";
   $("copybtn").textContent="คัดลอก";
   t.focus();t.select();
@@ -202,11 +349,15 @@ $("copybtn").onclick=async()=>{
 };
 $("export").onclick=async()=>{
   if(typeof XLSX==="undefined"){showCopy("สร้างไฟล์ Excel ไม่ได้ — กด \"คัดลอก\" แล้วไปวางใน Excel ช่อง A1");return;}
-  const {sum,det}=buildRows();
+  const {sum,det,stk,pl}=buildRows();
   const wb=XLSX.utils.book_new();
   const w1=XLSX.utils.aoa_to_sheet(sum);w1["!cols"]=[{wch:44},{wch:16},{wch:16},{wch:16},{wch:18}];
   XLSX.utils.book_append_sheet(wb,w1,"สรุป");
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(det),"รายละเอียด");
+  const w3=XLSX.utils.aoa_to_sheet(stk);w3["!cols"]=[{wch:14},{wch:16},{wch:36},{wch:16},{wch:22}];
+  XLSX.utils.book_append_sheet(wb,w3,"สต๊อกแยก");
+  const w4=XLSX.utils.aoa_to_sheet(pl);w4["!cols"]=[{wch:22},{wch:18},{wch:16},{wch:16},{wch:22}];
+  XLSX.utils.book_append_sheet(wb,w4,"คำนวณเพลท");
   const buf=XLSX.write(wb,{type:"array",bookType:"xlsx"});
   const d=new Date(),pad=n=>String(n).padStart(2,"0");
   const name="socket-"+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+".xlsx";
@@ -221,8 +372,9 @@ $("export").onclick=async()=>{
     a.download=name;document.body.appendChild(a);a.click();a.remove();}catch(e){}
   showCopy("ถ้าไฟล์ .xlsx ไม่ถูกดาวน์โหลด ให้กด \"คัดลอก\" แล้วไปวางใน Excel ช่อง A1");
 };
-$("reset").onclick=()=>{if(confirm("ล้างข้อมูลทั้งหมด?")){state=Array(SOCKETS).fill(0);save();update();}};
-build();update();initDb();
+$("reset").onclick=()=>{if(confirm("ล้างจำนวนที่ทำทั้งหมด? (สต๊อกแยกจะไม่ถูกลบ)")){state=Array(SOCKETS).fill(0);save();update();}};
+$("resetstock").onclick=()=>{if(confirm("ล้างสต๊อกแยกทั้งหมด (จำนวนและหมายเหตุ)?")){stock=Array(SOCKETS).fill(0);snote=Array(SOCKETS).fill("");saveStock();update();}};
+build();buildPlan();update();initDb();
 </script>
 </body>
 </html>
