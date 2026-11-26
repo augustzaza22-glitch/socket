@@ -91,7 +91,8 @@ label.pchk input{width:18px;height:18px}
   <div class="dash" id="stockpanel"><h2>📦 สต๊อกแยก (เก็บไว้ใช้อย่างอื่น)</h2><div id="stocksum"></div></div>
   <div class="dash" id="donepanel"><h2>✅ เพลทที่ทำเสร็จแล้ว (เก็บข้อมูล · ใช้คำนวณในช่องหักเพลทที่เสร็จด้านล่าง)</h2>
     <div class="planin"><span>เพลท A</span><input class="pn2" id="planDa" type="text" inputmode="numeric" autocomplete="off" aria-label="จำนวนเพลท A ที่ทำเสร็จแล้ว"><span>เพลท B</span><input class="pn2" id="planDb" type="text" inputmode="numeric" autocomplete="off" aria-label="จำนวนเพลท B ที่ทำเสร็จแล้ว"></div>
-    <div class="psum" id="donesum"></div></div>
+    <div class="psum" id="donesum"></div>
+    <div id="donetbl" style="margin-top:10px"></div></div>
   <div class="dash" id="planpanel"><h2>🧮 คำนวณจำนวนที่ต้องใช้ตามเพลท</h2>
     <div class="planin"><span>ต้องการ เพลท A</span><input class="pn2" id="planNa" type="text" inputmode="numeric" autocomplete="off" aria-label="จำนวนเพลท A ที่ต้องการ"><span>เพลท B</span><input class="pn2" id="planNb" type="text" inputmode="numeric" autocomplete="off" aria-label="จำนวนเพลท B ที่ต้องการ">
       <label class="pchk"><input type="checkbox" id="planStock">นับสต๊อกแยกเป็นของที่มีด้วย</label></div>
@@ -276,9 +277,31 @@ function buildPlan(){
     pd.onblur=()=>{pd.value=plan[k].done;};});
   $("planStock").onchange=e=>{plan.stock=e.target.checked;savePlan();update();};
 }
+const usedCalc=()=>state.map((c,i)=>{const ua=plan.a.done*plan.a.per[i],ub=plan.b.done*plan.b.per[i];return {c,ua,ub,used:ua+ub,left:c-ua-ub};});
+const prefs3=[],DG="34px 1fr 1fr 1.2fr";
+function buildDone(){
+  const t=$("donetbl");
+  t.innerHTML='<div class="prow ph" style="grid-template-columns:'+DG+'"><span>Socket</span><span>ทำเสร็จ (บันทึกไว้)</span><span>ใช้กับเพลทที่เสร็จแล้ว</span><span>เหลือ</span></div>';
+  for(let i=0;i<SOCKETS;i++){
+    const r=document.createElement("div");r.className="prow";r.style.gridTemplateColumns=DG;
+    r.innerHTML='<span>S'+(i+1)+'</span><span class="dmade"></span><span class="dused"></span><span class="dleft"></span>';
+    prefs3.push({made:r.querySelector(".dmade"),used:r.querySelector(".dused"),left:r.querySelector(".dleft")});
+    t.appendChild(r);
+  }
+  const f=document.createElement("div");f.className="psum";f.id="doneftr";t.appendChild(f);
+}
+function renderDone(){
+  const u=usedCalc(),any=plan.a.done+plan.b.done>0;
+  u.forEach((r,i)=>{const k=prefs3[i];
+    k.made.textContent=r.c;k.used.textContent=r.used;k.used.title="A "+r.ua+" + B "+r.ub;
+    k.left.className="dleft "+(any?(r.left>=0?"okc":"shc"):"");
+    k.left.textContent=r.left>=0?r.left+" ชิ้น":"ติดลบ "+(-r.left);});
+  const tl=u.reduce((a,r)=>a+Math.max(0,r.left),0),neg=u.filter(r=>r.left<0).length;
+  $("doneftr").innerHTML=any?("เหลือรวม <b>"+tl+"</b> ชิ้น"+(neg?' · <span class="shc">มี '+neg+' Socket ที่ใช้ไปมากกว่าจำนวนที่บันทึกไว้ — ตรวจสอบตัวเลขอีกครั้ง</span>':"")+'<br><span style="color:var(--muted)">คิดจาก ทำเสร็จ − (จำนวนเพลทที่เสร็จ × ชิ้นต่อ 1 เพลท) ตามค่าในตารางคำนวณ</span>'):"พิมพ์จำนวนเพลทที่ทำเสร็จแล้ว ระบบจะหักออกจาก Socket แต่ละตัวให้";
+}
 const eff=(k,d)=>d?Math.max(0,plan[k].n-plan[k].done):plan[k].n;
 function planCalc(d){
-  return state.map((c,i)=>{const na=eff("a",d)*plan.a.per[i],nb=eff("b",d)*plan.b.per[i],need=na+nb,have=c+(plan.stock?stock[i]:0);
+  return state.map((c,i)=>{const na=eff("a",d)*plan.a.per[i],nb=eff("b",d)*plan.b.per[i],need=na+nb,have=(d?usedCalc()[i].left:c)+(plan.stock?stock[i]:0);
     return {pa:plan.a.per[i],pb:plan.b.per[i],na,nb,need,have,diff:have-need};});
 }
 function renderPlan(){
@@ -319,6 +342,7 @@ function update(){
     if(document.activeElement!==k.nt)k.nt.value=snote[i];});
   renderStock();
   renderPlan();
+  renderDone();
   const sum=state.reduce((a,b)=>a+b,0),plates=Math.min(...state);
   renderDash(state,sum,plates);
   $("plates").textContent=plates;
@@ -372,6 +396,8 @@ function buildRows(){
   pl.push([],["คำนวณหลังหักเพลทที่ทำเสร็จแล้ว (เหลือต้องทำ)","A เหลือ",eff("a",true),"B เหลือ",eff("b",true)],["Socket","A ต่อ 1 เพลท","B ต่อ 1 เพลท","ต้องใช้สำหรับ A","ต้องใช้สำหรับ B","ต้องใช้รวม","มีอยู่","คงเหลือ(+) / ขาด(−)"]);
   planCalc(true).forEach((r,i)=>pl.push(["Socket "+(i+1),r.pa,r.pb,r.na,r.nb,r.need,r.have,r.diff]));
   const dn=[["","ทำเสร็จแล้ว (เพลท)"],["เพลท A",plan.a.done],["เพลท B",plan.b.done],["รวม",plan.a.done+plan.b.done]];
+  dn.push([],["Socket","ทำเสร็จ (ชิ้น)","ใช้กับเพลท A ที่เสร็จ","ใช้กับเพลท B ที่เสร็จ","ใช้รวม","เหลือ (ชิ้น)"]);
+  usedCalc().forEach((r,i)=>dn.push(["Socket "+(i+1),r.c,r.ua,r.ub,r.used,r.left]));
   return {sum,det,stk,pl,dn};
 }
 function showCopy(note){
@@ -400,7 +426,7 @@ $("export").onclick=async()=>{
   XLSX.utils.book_append_sheet(wb,w3,"สต๊อกแยก");
   const w4=XLSX.utils.aoa_to_sheet(pl);w4["!cols"]=[{wch:18},{wch:14},{wch:14},{wch:16},{wch:16},{wch:14},{wch:12},{wch:20}];
   XLSX.utils.book_append_sheet(wb,w4,"คำนวณเพลท");
-  const w5=XLSX.utils.aoa_to_sheet(dn);w5["!cols"]=[{wch:14},{wch:20}];
+  const w5=XLSX.utils.aoa_to_sheet(dn);w5["!cols"]=[{wch:14},{wch:20},{wch:22},{wch:22},{wch:12},{wch:14}];
   XLSX.utils.book_append_sheet(wb,w5,"เพลทที่ทำเสร็จ");
   const buf=XLSX.write(wb,{type:"array",bookType:"xlsx"});
   const d=new Date(),pad=n=>String(n).padStart(2,"0");
@@ -418,7 +444,7 @@ $("export").onclick=async()=>{
 };
 $("reset").onclick=()=>{if(confirm("ล้างจำนวนที่ทำทั้งหมด? (สต๊อกแยกจะไม่ถูกลบ)")){state=Array(SOCKETS).fill(0);save();update();}};
 $("resetstock").onclick=()=>{if(confirm("ล้างสต๊อกแยกทั้งหมด (จำนวนและหมายเหตุ)?")){stock=Array(SOCKETS).fill(0);snote=Array(SOCKETS).fill("");saveStock();update();}};
-build();buildPlan();update();initDb();
+build();buildPlan();buildDone();update();initDb();
 </script>
 </body>
 </html>
